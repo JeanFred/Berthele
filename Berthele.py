@@ -35,12 +35,14 @@ class BertheleMetadataCollection(metadata.MetadataCollection):
             cote_right = cote[4:]
             cote_parts = cote_right.split('/')
             try:
-                final_cote = "%s_%04d" % (cote_parts[0], int(cote_parts[1]))
+                final_cote = "%04d_%01d" % (int(cote_parts[0]), int(cote_parts[1]))
             except ValueError as e:
+                print "Skipped %s " % cote
                 raise metadata.UnreadableRecordException
         record = metadata.MetadataRecord(base_url % final_cote, image_metadata)
         title = make_title(image_metadata, front_titlefmt,
-                           rear_titlefmt, variable_titlefmt)
+                           rear_titlefmt, variable_titlefmt,
+                           add_extension=False)
         record.metadata['commons_title'] = title
         return record
 
