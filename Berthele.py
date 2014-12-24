@@ -25,12 +25,16 @@ class BertheleMetadataCollection(metadata.MetadataCollection):
 
     def handle_record(self, xml_element):
         """Handle a record."""
-
+        black_list = range(1, 1425)
         image_metadata = self.get_metadata_from_xml_element(xml_element)
         cote = image_metadata['Cote']
         base_url = 'http://berthele.commonists.org/FRAC31555_49Fi%s.jpg'
         try:
-            final_cote = "%04d" % int(cote[4:])
+            raw_cote = int(cote[4:])
+            final_cote = "%04d" % raw_cote
+            if raw_cote in black_list:
+                # print "Skip %s" % raw_cote
+                raise metadata.UnreadableRecordException
         except ValueError as e:
             cote_right = cote[4:]
             cote_parts = cote_right.split('/')
@@ -40,6 +44,7 @@ class BertheleMetadataCollection(metadata.MetadataCollection):
                 print "Skipped %s " % cote
                 raise metadata.UnreadableRecordException
         record = metadata.MetadataRecord(base_url % final_cote, image_metadata)
+        record.metadata['proper_cote'] = "49Fi%s" % final_cote
         title = make_title(image_metadata, front_titlefmt,
                            rear_titlefmt, variable_titlefmt,
                            add_extension=False)
@@ -81,11 +86,27 @@ def main(args):
                                      front_titlefmt=front_titlefmt,
                                      rear_titlefmt=rear_titlefmt,
                                      variable_titlefmt=variable_titlefmt,
-                                     pagefmt=template_name)
-
+                                     pagefmt=template_name,
+                                     verifyDescription=False)
     if args.upload:
-        uploadBot.doSingle()
+        uploadBot.run()
     elif args.dry_run:
+        string = StringIO()
+
+        tdt = ['"%s": {"label": "%s"},' % (a, a) for a in collection.count_metadata_values().keys()]
+        template_data = """<templatedata>   
+{
+    "description": "Ingestion template",
+    "params": {
+    %s
+}
+</templatedata>
+""" % '\n'.join(tdt)
+        # print template_data
+
+        mapping = ['"%s": ["%s"]' % (a, a) for a in collection.count_metadata_values().keys()]
+        # print '{%s}' % ','.join(mapping)
+
         #string = StringIO()
         #collection.write_metadata_to_xml(string)
         #print string.getvalue()
